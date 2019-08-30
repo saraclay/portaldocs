@@ -564,17 +564,17 @@ Firstly you'll need to craft a KQL query which represents all possible data for 
 | Display name | Expected Column Name | PDL Reference |
 | ------------ | -------------------- | ------------- |
 | Name | name | N/A - Injected as the first column |
-| Resource Id | id | FxColumn.ResourceId |
-| Subscription | N/A | FxColumn.Subscription |
-| SubscriptionId | subscriptionId | FxColumn.SubscriptionId |
-| Resource Group | resourceGroup | FxColumn.ResourceGroup |
-| Resource Group Id | N/A | FxColumn.ResourceGroupId |
-| Location | location | FxColumn.Location |
-| Location Id | N/A | FxColumn.LocationId |
-| Resource Type | N/A | FxColumn.ResourceType |
-| Type | type | FxColumn.AssetType |
-| Kind | kind | FxColumn.Kind |
-| Tags | tags | FxColumn.Tags |
+| Resource Id | id | FxColumns.ResourceId |
+| Subscription | N/A | FxColumns.Subscription |
+| SubscriptionId | subscriptionId | FxColumns.SubscriptionId |
+| Resource Group | resourceGroup | FxColumns.ResourceGroup |
+| Resource Group Id | N/A | FxColumns.ResourceGroupId |
+| Location | location | FxColumns.Location |
+| Location Id | N/A | FxColumns.LocationId |
+| Resource Type | N/A | FxColumns.ResourceType |
+| Type | type | FxColumns.AssetType |
+| Kind | kind | FxColumns.Kind |
+| Tags | tags | FxColumns.Tags |
 | Tenant Id | tenantId | N/A |
 
 <a name="browse-with-azure-resource-graph-kql-query"></a>
@@ -605,10 +605,11 @@ PDL in our extension providing localised display strings.
 
 ```kql
 where type =~ 'microsoft.web/sites'
+| extend state = tolower(properties.state)
 | extend status = case(
-tolower(properties.state) == 'stopped',
+state == 'stopped',
 'Stopped',
-tolower(properties.state) == 'running',
+state == 'running',
 'Running',
 'Other')
 | project name,resourceGroup,kind,location,id,type,subscriptionId,tags
@@ -621,24 +622,26 @@ As an example the below query can be used to replicate the 'App Services' ARM ba
 where type =~ 'microsoft.web/sites'
 | extend appServicePlan = extract('serverfarms/([^/]+)', 1, tostring(properties.serverFarmId))
 | extend appServicePlanId = properties.serverFarmId
+| extend state = tolower(properties.state)
+| extend sku = tolower(properties.sku)
 | extend pricingTier = case(
-tolower(properties.sku) == 'free',
+sku == 'free',
 'Free',
-tolower(properties.sku) == 'shared',
+sku == 'shared',
 'Shared',
-tolower(properties.sku) == 'dynamic',
+sku == 'dynamic',
 'Dynamic',
-tolower(properties.sku) == 'isolated',
+sku == 'isolated',
 'Isolated',
-tolower(properties.sku) == 'premiumv2',
+sku == 'premiumv2',
 'PremiumV2',
-tolower(properties.sku) == 'premium',
+sku == 'premium',
 'Premium',
 'Standard')
 | extend status = case(
-tolower(properties.state) == 'stopped',
+state == 'stopped',
 'Stopped',
-tolower(properties.state) == 'running',
+state == 'running',
 'Running',
 'Other')
 | extend appType = case(
@@ -669,24 +672,26 @@ The following is an example using the resource reference syntax.
 ```kql
 where type == 'microsoft.web/sites'
 | extend appServicePlanId = properties.serverFarmId
+| extend state = tolower(properties.state)
+| extend sku = tolower(properties.sku)
 | extend pricingTier = case(
-    tolower(properties.sku) == 'free',
+    sku == 'free',
     '{{Resource pricingTier.free, Module=BrowseResources}}',
-    tolower(properties.sku) == 'shared',
+    sku == 'shared',
     '{{Resource pricingTier.shared, Module=BrowseResources}}',
-    tolower(properties.sku) == 'dynamic',
+    sku == 'dynamic',
     '{{Resource pricingTier.dynamic, Module=BrowseResources}}',
-    tolower(properties.sku) == 'isolated',
+    sku == 'isolated',
     '{{Resource pricingTier.isolated, Module=BrowseResources}}',
-    tolower(properties.sku) == 'premiumv2',
+    sku == 'premiumv2',
     '{{Resource pricingTier.premiumv2, Module=BrowseResources}}',
-    tolower(properties.sku) == 'premium',
+    sku == 'premium',
     '{{Resource pricingTier.premium, Module=BrowseResources}}',
     '{{Resource pricingTier.standard, Module=BrowseResources}}')
 | extend status = case(
-    tolower(properties.state) == 'stopped',
+    state == 'stopped',
     '{{Resource status.stopped, Module=BrowseResources}}',
-    tolower(properties.state) == 'running',
+    state == 'running',
     '{{Resource status.running, Module=BrowseResources}}',
     '{{Resource status.other, Module=BrowseResources}}')
 | extend appType = case(
@@ -717,8 +722,8 @@ A column tag has 5 properties.
 ```
 
 - Name: The identifier which is used to uniquely refer to your column
-- DisplayName: A display string, this should be a reference to a resource
-- Description: A description string, this should also be a reference to a resource
+- DisplayName: A display string, __this has to be a reference to a resource__
+- Description: A description string, __this has to be a reference to a resource__
 - Format: See below table for possible format
 - WidthInPixels: String, which respresents the default width of the column in pixels (e.g. "120")
 
@@ -731,9 +736,9 @@ A column tag has 5 properties.
 ### Default columns
 
 To specify default columns you need to declare a property `DefaultColumns` on your `Browse` `PDL` tag.
-Default columns is a comma separated list of column names, a mix of custom columns and framework defined columns from the earlier table. All framework columns are prefixed with `FxColumn.`.
+Default columns is a comma separated list of column names, a mix of custom columns and framework defined columns from the earlier table. All framework columns are prefixed with `FxColumns.`.
 
-For example `DefaultColumns="status, appType, appServicePlanId, FxColumn.location"`.
+For example `DefaultColumns="status, appType, appServicePlanId, FxColumns.Location"`.
 
 <a name="browse-with-azure-resource-graph-pdl-definition-full-asset-definition"></a>
 ### Full Asset definition
@@ -746,7 +751,7 @@ It also declares the default columns and their ordering for what a new user of t
 <AssetType>
     <Browse
         Query="{Query File=./AppServiceQuery.kml}"
-        DefaultColumns="status, appType, appServicePlanId, FxColumn.location">
+        DefaultColumns="status, appType, appServicePlanId, FxColumns.Location">
             <Column Name="status"
                   DisplayName="{Resource Columns.status, Module=ClientResources}"
                   Description="{Resource Columns.statusDescription, Module=ClientResources}"
@@ -794,6 +799,10 @@ Within your extension config, either hosting service or self hosted, you will ne
 | ForceOptIn | Allows users to opt in/out of the new experience but will default to the new experience. This will show a 'Try preview' button on the old browse blade and an 'Opt out of preview' button on the ARG browse blade |
 | Force | This will force users to the new experience. There wil be no 'Opt out of preview' button on the ARG browse blade |
 | Disable | This will force users to the old experience. This is the default experience if not flags are set. There wil be no 'Try preview' button on the ARG browse blade |
+
+To test each variation or to test when side loading you can use:
+
+`https://portal.azure.com/?ExtensionName_argbrowseoptions={"assetName":"OPTION"}`
 
 <a name="custom-blade"></a>
 # Custom blade
