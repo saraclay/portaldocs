@@ -69,7 +69,7 @@ The user will invoke an action using one of the following items
 * link
 * card 
 
-In order to minimize the disruption to the user, an action should display subsequent UI as close to the user's previosu click target as possible by using one of the following approaches in priority order
+In order to minimize the disruption to the user, an action should display subsequent UI as close to the user's previous click target as possible by using one of the following approaches in priority order
 
 1. Take the action with no further user interaction needed, user may see updates to current page or portal notifcations.  Examples:
     * Refreshing a page takes immediate affect with no further user input needed.  
